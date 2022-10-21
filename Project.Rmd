@@ -1,0 +1,147 @@
+---
+title: "Project Markdown INFO550"
+author: "gaby blade"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+          
+```{r import-statements, echo = FALSE}
+
+
+#install.packages("foreign")
+library(foreign)
+
+#install.packages("gtsummary")
+library("gtsummary")
+#install.packages("ggplot2")
+library("ggplot2")
+library("flextable")
+#install.packages("labelled")
+library(labelled)
+#install.packages("magrittr")
+#install.packages("dplyr")
+library(magrittr)
+library(dplyr)
+
+library(tidyverse)
+library(haven)
+
+options("install.lock" = FALSE)
+
+#install.packages("factoextra")
+library(factoextra)
+
+#install.packages("NbClust")
+library(NbClust)
+
+library("data.table")
+
+library("lubridate")
+require("hms")
+```
+
+# Introduction
+MIMS3 is a cohort comprised of early-onset post-MI patients, and sex- and age-matched community controls designed to augment previous MIMS studies. This Rmarkdown file will analyze ambulatory heart rate variability (HRV) across different factors like age, gender and MSI (Mental Stress Ischemia). 
+
+# Loading Data
+```{r loading_data }
+hrv = read_csv(here::here("data/project_data.csv")) 
+
+patids = as.list(sample(3001:3130, 10))
+hrv_small <- hrv[hrv$patid %in% c(patids),]
+```
+
+# Table of data
+```{r create_table, echo = FALSE}
+
+# select usable data for all day
+hrv_usable <- hrv_small %>%
+  filter(!is.na(DAY) & !is.na(HRV_LF)) %>%
+  group_by(patid, DAY) %>% 
+  mutate(percent_obs = n()/2880 *100) %>%
+  filter (percent_obs >= 50) %>%
+  ungroup()
+#hrv_usable
+
+hrv_usable$MSI[hrv_usable$rdr_msi == 0] = "No MSI"
+hrv_usable$MSI[hrv_usable$rdr_msi == 1] = "MSI"
+
+# set age for later use
+hrv_usable$AGE[hrv_usable$age >= 54] = 1
+hrv_usable$AGE[hrv_usable$age < 54] = 0
+
+#calc median of medians and filter for table
+HRV_FINAL <- hrv_usable %>%
+  filter(!is.na(DAY) & !is.na(HRV_LF)) %>%
+  group_by(patid, DAY) %>% 
+  summarize(msi_1 = mean(rdr_msi), female_1 = mean(female), age_1 = mean(AGE), median_1_lf = median(log10(HRV_LF)), median_1_hf = median(log10(HRV_HF)), median_1_lfhf = median(log10(HRV_LFHF)), median_1_dc = median(log10(HRV_dc)), m_nn_m = median(HRV_NNmedian), m_sdnn = median(HRV_SDNN), m_ulf = median(HRV_ulf), m_vlf = median(HRV_vlf)) %>%
+  group_by(patid) %>%
+  summarize(msi_group = mean(msi_1), female_group = mean(female_1), age_group = mean(age_1), median_2_lf = median(median_1_lf), median_2_hf = median(median_1_hf), median_2_lfhf = median(median_1_lfhf), median_2_dc = median(median_1_dc), m_nn_m_2 = median(m_nn_m), m_sdnn_2 = median(m_sdnn), m_ulf_2 = median(m_ulf), m_vlf_2 = median(m_vlf))
+#HRV_FINAL
+
+HRV_FINAL$MSI[HRV_FINAL$msi_group == 0] = "No MSI"
+HRV_FINAL$MSI[HRV_FINAL$msi_group == 1] = "MSI"
+
+#set variable lables
+var_label(HRV_FINAL$median_2_lf) = var_label(hrv$HRV_LF)
+var_label(HRV_FINAL$median_2_hf) = var_label(hrv$HRV_HF)
+var_label(HRV_FINAL$median_2_lfhf) = var_label(hrv$HRV_LFHF)
+var_label(HRV_FINAL$median_2_dc) = var_label(hrv$HRV_dc)
+
+
+HRV_FINAL_MSI <- HRV_FINAL 	%>% 
+  select(MSI, median_2_lf, median_2_hf, median_2_lfhf, median_2_dc) #
+
+# create table of medians for all day
+HRVTAB<- HRV_FINAL_MSI %>%
+  tbl_summary(by=MSI,
+              type = list(median_2_lf ~ "continuous", median_2_hf ~ "continuous", median_2_lfhf ~ "continuous", median_2_dc ~ "continuous"),
+              statistic = 	all_continuous() ~ "{median} ({p25}, {p75})",
+              missing = "no"  ) 		%>% 
+  add_p() %>%
+  add_n() %>%
+  modify_caption("Average HRV Metrics, All Day") %>%
+  modify_footnote(all_stat_cols() ~ "HRV Metrics have been log-transformed") %>%
+  bold_labels()
+HRVTAB
+
+```
+
+
+# Describe table
+
+This table shows the difference in HRV (Heart Rate Variability) by MSI (Mental Stress Ischemia) for the randomly selected patients. We see that the non-MSI group tends to have slightly higher HRV levels compared to the MSI group; however these differences are not statistically significant. 
+
+
+# Figure of data
+```{r figure_data, echo = FALSE}
+
+hrv_usable$TIME_ADJ = as_hms(ceiling_date(as.POSIXct(hrv_usable$TIME), "minute"))
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+
+lf_plot_overall_avg <- hrv_usable %>%
+  filter(!is.na(MSI)) %>%
+  group_by(TIME_ADJ, MSI, patid, DAY) %>%
+  summarize(avg_lf_2 = median(log10(HRV_LF))) %>% 
+  group_by(TIME_ADJ, MSI, patid) %>%
+  summarize(avg_lf_1 = median(avg_lf_2)) %>%
+  group_by(TIME_ADJ, MSI) %>%
+  summarize(avg_lf = median(avg_lf_1)) %>%
+  ggplot(aes(x=TIME_ADJ, y=avg_lf, group = MSI, color = MSI))  + geom_point(alpha = 0.30) + geom_smooth(method = "loess", se = TRUE) + ggtitle("Average HRV LF") + xlab("Time") + ylab("LOG(HRV: Power in the Low Frequency Band)") + theme(text = element_text(size = 15)) +   scale_colour_manual(values=cbPalette)
+print(lf_plot_overall_avg)
+
+
+```
+
+
+# Describe figure 
+
+The figure shows the moving average HRV LF across the 24-hr time period by MSI status. We see that on average the group without MSI has higher HRV LF throughout the day. 
+
