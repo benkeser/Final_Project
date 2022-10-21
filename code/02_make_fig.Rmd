@@ -1,0 +1,49 @@
+```{r}
+
+#install.packages("foreign")
+library(foreign)
+
+#install.packages("gtsummary")
+library("gtsummary")
+#install.packages("ggplot2")
+library("ggplot2")
+library("flextable")
+#install.packages("labelled")
+library(labelled)
+#install.packages("magrittr")
+#install.packages("dplyr")
+library(magrittr)
+library(dplyr)
+
+library(tidyverse)
+library(haven)
+
+options("install.lock" = FALSE)
+
+#install.packages("factoextra")
+library(factoextra)
+
+#install.packages("NbClust")
+library(NbClust)
+
+library("data.table")
+
+library("lubridate")
+require("hms")
+library("chron")
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+
+hrv_small$TIME_ADJ= ceiling_date(as.POSIXct(hrv_small$HRV_DATETIME,format="%H:%M:%S"), "minute")
+
+lf_plot_overall_avg <- hrv_small %>%
+  filter(!is.na(rdr_msi) & !is.na(HRV_LF)) %>%
+  group_by(TIME_ADJ, rdr_msi, DAY) %>%
+  summarize(avg_lf_2 = median(log(HRV_LF))) %>% 
+  group_by(TIME_ADJ, rdr_msi) %>%
+  summarize(avg_lf = median(avg_lf_2)) %>%
+  ggplot(aes(x=TIME_ADJ, y=avg_lf, group = factor(rdr_msi), color = factor(rdr_msi)))  + geom_point(alpha = 0.30) + geom_smooth(method = "loess", se = TRUE) + ggtitle("Average HRV LF") + xlab("Time") + ylab("LOG(HRV: Power in the Low Frequency Band)") + theme(text = element_text(size = 15)) +   scale_colour_manual(values=cbPalette)
+print(lf_plot_overall_avg)
+```
+

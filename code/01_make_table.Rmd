@@ -1,0 +1,73 @@
+
+```{r}
+
+#install.packages("foreign")
+library(foreign)
+
+#install.packages("gtsummary")
+library("gtsummary")
+#install.packages("ggplot2")
+library("ggplot2")
+library("flextable")
+#install.packages("labelled")
+library(labelled)
+#install.packages("magrittr")
+#install.packages("dplyr")
+library(magrittr)
+library(dplyr)
+
+library(tidyverse)
+library(haven)
+
+options("install.lock" = FALSE)
+
+#install.packages("factoextra")
+library(factoextra)
+
+#install.packages("NbClust")
+library(NbClust)
+
+library("data.table")
+
+library("lubridate")
+require("hms")
+
+
+#calc median of medians and filter for table
+HRV_FINAL <- hrv_small %>%
+  filter(!is.na(DAY) & !is.na(HRV_LF)) %>%
+  group_by(patid, DAY) %>% 
+  summarize(msi_1 = mean(rdr_msi), FEMALE_1 = mean(FEMALE), median_1_lf = median(log(HRV_LF)), median_1_hf = median(log(HRV_HF)), median_1_lfhf = median(log(HRV_LFHF)), median_1_dc = median(log(HRV_dc))) %>%
+group_by(patid) %>%
+  summarize(msi_group = mean(msi_1), median_2_lf = median(median_1_lf), median_2_hf = median(median_1_hf), median_2_lfhf = median(median_1_lfhf), median_2_dc = median(median_1_dc))
+#HRV_FINAL
+
+HRV_FINAL$MSI[HRV_FINAL$msi_group <= 0.5] = "No MSI"
+HRV_FINAL$MSI[HRV_FINAL$msi_group > 0.5] = "MSI"
+
+#set variable lables
+var_label(HRV_FINAL$median_2_lf) = "HRV Power in the Low Frequency Band"
+var_label(HRV_FINAL$median_2_hf) = "HRV Power in the High Frequency Band"
+var_label(HRV_FINAL$median_2_lfhf) = "HRV LF HF Ratio"
+var_label(HRV_FINAL$median_2_dc) = "HRV Deceleration Capacity"
+
+
+HRV_FINAL_MSI <- HRV_FINAL 	%>% 
+  select(MSI, median_2_lf, median_2_hf, median_2_lfhf, median_2_dc) #
+
+# create table of medians for all day
+HRVTAB<- HRV_FINAL_MSI %>%
+  tbl_summary(by=MSI,
+              type = list(median_2_lf ~ "continuous", median_2_hf ~ "continuous", median_2_lfhf ~ "continuous", median_2_dc ~ "continuous"),
+              statistic = 	all_continuous() ~ "{median} ({p25}, {p75})",
+              missing = "no"  ) 		%>% 
+  add_p() %>%
+  add_n() %>%
+  modify_caption("Average HRV Metrics, All Day") %>%
+  modify_footnote(all_stat_cols() ~ "HRV Metrics have been log-transformed") %>%
+  bold_labels()
+
+HRVTAB
+
+```
+
