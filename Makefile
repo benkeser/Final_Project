@@ -19,4 +19,4 @@ project_mac:
 	docker run -v "/$$(pwd)/report":/project/report gabyb1012/project_image
 
 project_windows:
-	docker run -v "/$$(pwd)/report":/project/report gabyb1012/project_image
+	docker run -v "//$$(pwd)/report":/project/report gabyb1012/project_image
