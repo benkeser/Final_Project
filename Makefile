@@ -15,8 +15,6 @@ build:
 pull:
 	docker pull gabyb1012/project_image
 	
-project_mac:
+project:
 	docker run -v "/$$(pwd)/report":/project/report gabyb1012/project_image
 
-project_windows:
-	docker run -v "//$$(pwd)/report":/project/report gabyb1012/project_image
