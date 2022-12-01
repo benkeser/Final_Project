@@ -19,5 +19,10 @@ This is an R-script to render the Project.Rmd file.
 ## Makefile 
 This makefile sets the rules for making the final report.
 
-# TO RUN
-To run, all you must do is run 'make' while in the Project Folder.
+
+# Report Generation 
+In order to generate the report, you must first build the docker image associated with the project. To do so, you may either run "make build" in the command line to build the image from scratch or you can run "make pull" to pull the image from DockerHub. Building from scratch will take a long time so I recommend the "make pull" direction. 
+
+After you have built the image, you can produce the report. This is done by running the container you have just built. In the terminal, run the command "make project_mac" or "make project_windows" respectively. You will find the final report in the "report" folder. 
+
+

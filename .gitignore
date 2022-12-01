@@ -1,2 +1,3 @@
 #all `.html` files in the project directory
 *.html
+.Rproj.user

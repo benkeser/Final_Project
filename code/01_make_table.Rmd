@@ -8,7 +8,6 @@ library(foreign)
 library("gtsummary")
 #install.packages("ggplot2")
 library("ggplot2")
-library("flextable")
 #install.packages("labelled")
 library(labelled)
 #install.packages("magrittr")
@@ -16,16 +15,14 @@ library(labelled)
 library(magrittr)
 library(dplyr)
 
-library(tidyverse)
+#library(tidyverse)
 library(haven)
 
 options("install.lock" = FALSE)
 
 #install.packages("factoextra")
-library(factoextra)
+#library(factoextra)
 
-#install.packages("NbClust")
-library(NbClust)
 
 library("data.table")
 
